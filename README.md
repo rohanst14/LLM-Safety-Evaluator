@@ -6,7 +6,19 @@
 
 Exercise a model adapter against explicit synthetic output expectations and canary-leakage checks.
 
-## Design
+## Research extension: semantic safety judge evaluation
+
+Distinct from RedTeam-Lab's adversarial regression suite, this study measures the performance of a local toxicity classifier against human annotations from Civil Comments. It uses Toxic-BERT through Hugging Face Transformers, threshold selection on validation data, and held-out test evaluation.
+
+```bash
+pip install -e . -r requirements-research.txt
+python experiments/evaluate_moderation.py --limit 500
+python -m unittest discover -s tests -v
+```
+
+See [research protocol](docs/research-protocol.md). The default run targets 500 validation and 500 test comments. The full inference workflow is opt-in via Actions > Semantic moderation validation > Run workflow. No empirical classifier performance is claimed until execution. The original substring-based evaluator remains for compatibility.
+
+## Design (original baseline)
 
 Create cases → invoke predictor → case-fold responses → check forbidden and expected strings → aggregate.
 
