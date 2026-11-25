@@ -28,7 +28,7 @@ Civil Comments; 500 validation and 500 test comments by default. Toxicity is not
 
 Metrics: Precision, recall, F1, ROC-AUC, average precision, false-positive and false-negative rates.
 
-See [evaluation protocol](docs/research-protocol.md) for assumptions and limitations. The experiment writes `results/moderation.json`. No real-dataset benchmark values are asserted before execution. The existing lightweight baseline remains available in `src/` and `examples/demo.py`.
+See [evaluation protocol](docs/research-protocol.md) for assumptions and limitations. The experiment writes `results/moderation.json`. Successful benchmark jobs publish measured JSON reports; the dashboard loads the published report automatically when available. The existing lightweight baseline remains available in `src/` and `examples/demo.py`.
 
 ## Repository organization
 
