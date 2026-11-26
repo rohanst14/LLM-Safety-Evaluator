@@ -1,39 +1,92 @@
-"""Evaluate local toxicity classifier on held-out Civil Comments annotations."""
-import argparse,json,hashlib
-from pathlib import Path
+"""Fit and evaluate toxicity models on disjoint official Civil Comments partitions."""
+import argparse,hashlib,json,platform,os
 from itertools import islice
-from llm_safety_evaluator.moderation import ToxicityModel,confusion,choose_threshold
-from sklearn.metrics import roc_auc_score,average_precision_score
+from pathlib import Path
+from importlib.metadata import version
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.pipeline import FeatureUnion
+from sklearn.linear_model import LogisticRegression
+from huggingface_hub import HfApi
+from llm_safety_evaluator.moderation import ToxicityModel,choose_threshold
+from llm_safety_evaluator.evaluation import (metrics,calibrate,calibrated_predict,
+    policy_threshold,ranking_curves,paired_correctness)
 
-def read_split(split,n,seed,revision):
+DATASET="google/civil_comments"
+MODEL="unitary/toxic-bert"
+MODEL_REVISION="4d6c22e74ba2fdd26bc4f7238f50766b045a0d94"
+
+def read_split(split,n,seed,revision,seen):
     from datasets import load_dataset
-    stream=load_dataset("google/civil_comments",split=split,streaming=True,revision=revision).shuffle(seed=seed,buffer_size=10000)
-    rows=list(islice(stream,n))
-    if len(rows)!=n: raise ValueError("Insufficient examples")
-    return rows
+    stream=load_dataset(DATASET,split=split,streaming=True,revision=revision).shuffle(seed=seed,buffer_size=10000)
+    rows=[];duplicates=0
+    for row in stream:
+        key=hashlib.sha256(" ".join(row["text"].casefold().split()).encode()).digest()
+        if key in seen:
+            duplicates+=1;continue
+        seen.add(key);rows.append(row)
+        if len(rows)==n: break
+    if len(rows)!=n: raise ValueError("Insufficient distinct examples")
+    y=np.array([int(r["toxicity"]>=.5) for r in rows])
+    if len(set(y))!=2: raise ValueError("Both labels required")
+    digest=hashlib.sha256(json.dumps([(r["text"],r["toxicity"]) for r in rows],ensure_ascii=False).encode()).hexdigest()
+    return [r["text"] for r in rows],y,{"count":n,"positive_count":int(y.sum()),"sha256":digest,"duplicates_skipped":duplicates}
 
 def main():
     p=argparse.ArgumentParser()
-    p.add_argument("--limit",type=int,default=500)
-    p.add_argument("--model-revision")
+    p.add_argument("--limit",type=int,default=2000)
+    p.add_argument("--train-limit",type=int,default=30000)
     p.add_argument("--dataset-revision")
+    p.add_argument("--model-revision",default=MODEL_REVISION)
     p.add_argument("--output",type=Path,default=Path("results/moderation.json"))
     a=p.parse_args()
-    if not 100<=a.limit<=10000: p.error("limit must be 100–10000 per split")
-    model=ToxicityModel(revision=a.model_revision)
-    def evaluate_split(split):
-        rows=read_split(split,a.limit,42,a.dataset_revision)
-        texts=[r["text"] for r in rows]
-        labels=[int(r["toxicity"]>=.5) for r in rows]
-        if len(set(labels))<2: raise ValueError("Both labels required")
-        scores=model.predict(texts)
-        digest=hashlib.sha256(json.dumps([(r["text"],r["toxicity"]) for r in rows],ensure_ascii=False).encode()).hexdigest()
-        return labels,scores,digest
-    vy,vs,vhash=evaluate_split("validation")
-    ty,ts,thash=evaluate_split("test")
-    threshold=choose_threshold(vy,vs)
-    report={"dataset":"google/civil_comments","dataset_revision":a.dataset_revision,"model":"unitary/toxic-bert","model_revision":model.revision,"seed":42,"label_rule":"toxicity >= 0.5","validation_sha256":vhash,"test_sha256":thash,"validation_count":len(vy),"test_count":len(ty),"test_positive_count":sum(ty),"threshold":threshold,"default":confusion(ty,ts),"tuned":confusion(ty,ts,threshold),"roc_auc":float(roc_auc_score(ty,ts)),"average_precision":float(average_precision_score(ty,ts))}
+    if not 500<=a.limit<=10000 or not 1000<=a.train_limit<=100000: p.error("Invalid split size")
+    revision=HfApi().dataset_info(DATASET,revision=a.dataset_revision).sha
+    seen=set()
+    train,train_y,train_info=read_split("train",a.train_limit,42,revision,seen)
+    val,vy,val_info=read_split("validation",a.limit,42,revision,seen)
+    test,ty,test_info=read_split("test",a.limit,42,revision,seen)
+    cal,policy=train_test_split(np.arange(len(vy)),test_size=.5,random_state=42,stratify=vy)
+    # All vocabulary and supervised lexical weights are fitted on official training only.
+    vectorizer=FeatureUnion([("word",TfidfVectorizer(ngram_range=(1,2),min_df=2,max_features=60000,sublinear_tf=True,dtype=np.float32)),
+        ("character",TfidfVectorizer(analyzer="char",ngram_range=(3,5),min_df=3,max_features=80000,sublinear_tf=True,dtype=np.float32))])
+    x=vectorizer.fit_transform(train)
+    lexical=LogisticRegression(C=4.,max_iter=500,random_state=42).fit(x,train_y)
+    lv=lexical.predict_proba(vectorizer.transform(val))[:,1];lt=lexical.predict_proba(vectorizer.transform(test))[:,1]
+    import torch
+    torch.set_num_threads(min(4,os.cpu_count() or 1))
+    bert=ToxicityModel(model_id=MODEL,revision=a.model_revision)
+    bv=np.asarray(bert.predict(val));bt=np.asarray(bert.predict(test))
+    cb=calibrate(vy[cal],[bv[cal]])
+    stack=calibrate(vy[cal],[bv[cal],lv[cal]])
+    candidates={
+        "toxic_bert":(bv,bt),
+        "lexical":(lv,lt),
+        "calibrated_bert":(calibrated_predict(cb,[bv]),calibrated_predict(cb,[bt])),
+        "hybrid":(calibrated_predict(stack,[bv,lv]),calibrated_predict(stack,[bt,lt]))}
+    prevalence=float(train_y.mean())
+    models={}
+    for key,(v,t) in candidates.items():
+        threshold=choose_threshold(vy[policy],v[policy])
+        recall_threshold=policy_threshold(vy[policy],v[policy])
+        models[key]={"default":metrics(ty,t),"tuned":metrics(ty,t,threshold),
+            "recall_policy":metrics(ty,t,recall_threshold),
+            "validation_f1":metrics(vy[policy],v[policy],threshold),
+            "validation_recall_policy":metrics(vy[policy],v[policy],recall_threshold),
+            "curves":ranking_curves(ty,t)}
+    selected=max(models,key=lambda k:(models[k]["validation_f1"]["f1"] or 0,k))
+    ref=models["toxic_bert"]["tuned"];cand=models[selected]["tuned"]
+    paired=paired_correctness(ty,bt,ref["threshold"],candidates[selected][1],cand["threshold"])
+    report={"schema_version":2,"dataset":DATASET,"dataset_revision":revision,"model":MODEL,"model_revision":bert.revision or a.model_revision,
+        "seed":42,"label_rule":"toxicity >= 0.5","sampling":"bounded-buffer shuffle (10000), normalized-text duplicate removal in train/validation/test order",
+        "splits":{"train":train_info,"validation":val_info,"test":test_info,"calibration":{"count":len(cal),"positive_count":int(vy[cal].sum())},"policy":{"count":len(policy),"positive_count":int(vy[policy].sum())}},
+        "test_count":len(ty),"test_positive_count":int(ty.sum()),"validation_count":len(vy),
+        "majority_baseline":metrics(ty,np.full(len(ty),prevalence)),
+        "models":models,"selected_model":selected,"selection_rule":"maximum policy-partition F1; alphabetical descending key breaks ties",
+        "paired_vs_tuned_bert":paired,"minimum_validation_recall":.8,
+        "environment":{"python":platform.python_version(),**{n:version(n) for n in ("numpy","scikit-learn","datasets","transformers","torch")}}}
     a.output.parent.mkdir(parents=True,exist_ok=True)
-    a.output.write_text(json.dumps(report,indent=2,allow_nan=False))
-    print(json.dumps(report,indent=2))
+    a.output.write_text(json.dumps(report,indent=2,allow_nan=False),encoding="utf-8")
+    print(json.dumps({"selected_model":selected,"test_count":len(ty),"test_positive_count":int(ty.sum()),"models":{k:{m:v["tuned"][m] for m in ("accuracy","f1","recall","precision","roc_auc","average_precision","ece")} for k,v in models.items()}},indent=2))
 if __name__=="__main__": main()

@@ -1,18 +1,22 @@
 # LLM-Safety-Evaluator
 
-**Semantic moderation & classifier assurance**
+[![Validation](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/workflows/research.yml/badge.svg?branch=main&event=push)](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/workflows/research.yml)
 
-![Validation](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/workflows/research.yml/badge.svg)
+Local toxicity classification, probability calibration and operating-point evaluation using Civil Comments human annotations. The benchmark evaluates text moderation; it does not establish comprehensive LLM safety.
 
-Local Toxic-BERT inference evaluated against human toxicity annotations, with validation-selected thresholds and held-out test metrics.
+[**Interactive dashboard**](https://rohanst14.github.io/LLM-Safety-Evaluator/) · [Experimental protocol](docs/research-protocol.md) · [Measured JSON](docs/results/moderation.json)
 
-## Dashboard
+## Method
 
-[**Open interactive dashboard**](https://rohanst14.github.io/LLM-Safety-Evaluator/) · [Evaluation protocol](docs/research-protocol.md)
+- Pretrained Toxic-BERT inference with a pinned model revision.
+- Supervised word/character TF-IDF logistic regression fitted on the official training partition.
+- Logistic recalibration and hybrid stacking fitted on a separate calibration subset.
+- F1-selected thresholds and recall-constrained operating points selected on a disjoint policy subset.
+- Common held-out test sample; comprehensive classification, discrimination and calibration metrics.
 
-Explore published benchmark metrics and import additional experiment reports in JSON format.
+The dashboard reads the measured report and displays the actual comparison, including the validation-selected model and test trade-offs. The prior single-model experiment remains available in Git history. The expanded report is published only after execution and validation.
 
-## Installation and execution
+## Run locally
 
 ```bash
 git clone https://github.com/rohanst14/LLM-Safety-Evaluator.git
@@ -20,27 +24,18 @@ cd LLM-Safety-Evaluator
 python -m venv .venv
 # Activate the environment for your operating system.
 pip install -e . -r requirements-research.txt
-python experiments/evaluate_moderation.py --limit 500
+python experiments/evaluate_moderation.py
 python -m unittest discover -s tests -v
+python tests/check_report.py results/moderation.json
 ```
 
-## Dataset and methodology
-
-Civil Comments; 500 validation and 500 test comments by default. Toxicity is not a comprehensive measure of LLM safety.
-
-Metrics: Precision, recall, F1, ROC-AUC, average precision, false-positive and false-negative rates.
-
-See [evaluation protocol](docs/research-protocol.md) for assumptions and limitations. The experiment writes `results/moderation.json`. Successful benchmark jobs publish measured JSON reports; the dashboard loads the published report automatically when available. 
-
-## Repository organization
+## Repository structure
 
 | Path | Purpose |
 |---|---|
-| src/ | Core algorithms and model interfaces |
-| experiments/ | Reproducible experiment entry points |
-| tests/ | Automated regression tests |
-| docs/ | Dashboard and methodology |
-| requirements-research.txt | Experiment dependencies |
-| .github/workflows/ | Continuous validation |
+| src/llm_safety_evaluator/ | Model adapter, threshold selection and evaluation |
+| experiments/ | Reproducible Civil Comments benchmark |
+| tests/ | Unit tests, report checks and browser tests |
+| docs/ | Protocol, dashboard and measured results |
 
-Use [GitHub Actions](https://github.com/rohanst14/LLM-Safety-Evaluator/actions) to inspect actual test outcomes.
+The separate synthetic canary example in `examples/demo.py` tests string-matching behavior only, not real-model safety. See [methodology](docs/methodology.md).
