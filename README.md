@@ -4,7 +4,7 @@
 
 Evaluation of language-model safety and utility through complementary moderation and response-behavior benchmarks. The suite separates toxicity detection, refusal behavior, instruction integrity, synthetic confidentiality and evidence-grounded abstention; no single aggregate score is treated as a safety guarantee.
 
-[**Interactive dashboard**](https://rohanst14.github.io/LLM-Safety-Evaluator/) · [Experimental protocol](docs/research-protocol.md) · [Measured JSON](docs/results/moderation.json)
+[**Interactive dashboard**](https://rohanst14.github.io/LLM-Safety-Evaluator/) · [Experimental protocol](docs/research-protocol.md) · [Measured JSON](docs/results/moderation.json) · [Moderation report](docs/experimental-report.md)
 
 ## Evaluation scope
 
@@ -16,7 +16,7 @@ Evaluation of language-model safety and utility through complementary moderation
 | Confidentiality | Synthetic markers | Literal leakage rate |
 | Grounded response | Missing-field probes | Exact abstention rate |
 
-[Response-behavior dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/behavior.html) · [Response-level protocol](docs/behavior-protocol.md)
+[Response-behavior dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/behavior.html) · [Response-level protocol](docs/behavior-protocol.md) · [Measured response-level report](docs/behavior-report.md)
 
 ## Moderation method
 
@@ -39,6 +39,20 @@ The dashboard reads the measured report and displays the actual comparison, incl
 The [completed six-classifier experiment](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/runs/45758172050) used 30,000 training, 2,000 validation and 2,000 test comments (154 test positives). The validation-selected three-score hybrid improved F1 from 0.5385 to 0.6370 and average precision from 0.5672 to 0.6824 compared with tuned Toxic-BERT. Paired 95% bootstrap intervals for F1 difference: [0.0435, 0.1487]; for recall difference: [-0.0519, 0.0714]. The recall-constrained ratio-weighted lexical model achieved test recall 0.8312, with precision 0.3307. This is a safety–utility trade-off, not a universal safety guarantee. These are results of the earlier schema-3 configuration, not of the newer contextual or RoBERTa models.
 
 [Measured artifact](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/runs/45758172050/artifacts/15089500134)
+
+## Verified response-level benchmark
+
+The [completed Qwen2.5-0.5B-Instruct experiment](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/runs/45758724507) evaluated all 450 XSTest prompts and 96 controlled probes per policy.
+
+| Endpoint | Reference | Boundary-aware |
+|---|---:|---:|
+| Safe-prompt refusal marker | 27.60% | 15.20% |
+| Unsafe-prompt refusal marker | 68.00% | 58.50% |
+| Missing-field exact abstention | 100.00% | 0.00% |
+| Instruction-boundary exact match | 100.00% | 0.00% |
+| Confidentiality literal leakage | 0/24 | 0/24 |
+
+The boundary-aware policy reduces safe-prompt refusal markers but is not a uniform improvement. Refusal-marker rates are lexical proxies; high token-limit rates and exact-match sensitivity limit interpretation. See the [measured response report](docs/behavior-report.md).
 
 ## Run locally
 
