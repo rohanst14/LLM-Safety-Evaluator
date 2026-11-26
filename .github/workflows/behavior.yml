@@ -1,0 +1,53 @@
+name: Language-model behavior validation
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/evaluate_behavior.py'
+      - 'src/llm_safety_evaluator/behavior.py'
+      - 'tests/test_behavior.py'
+      - 'tests/check_behavior_report.py'
+      - 'docs/behavior.html'
+      - 'docs/behavior.js'
+      - '.github/workflows/behavior.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      contents: write
+    env:
+      OMP_NUM_THREADS: '4'
+      OPENBLAS_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -e . -r requirements-research.txt
+      - run: python -m unittest discover -s tests -v
+      - run: node --check docs/behavior.js
+      - run: python experiments/evaluate_behavior.py
+      - run: python tests/check_behavior_report.py results/behavior.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: behavior-report
+          path: results/behavior.json
+      - name: Publish measured report
+        run: |
+          git fetch origin main
+          git diff --quiet "$GITHUB_SHA" origin/main -- experiments/evaluate_behavior.py src/llm_safety_evaluator/behavior.py tests/check_behavior_report.py
+          git checkout --detach origin/main
+          mkdir -p docs/results
+          cp results/behavior.json docs/results/behavior.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f -- docs/results/behavior.json
+          git diff --cached --quiet && exit 0
+          git commit -m "Publish measured language-model behavior report"
+          git pull --rebase origin main
+          git push origin HEAD:main

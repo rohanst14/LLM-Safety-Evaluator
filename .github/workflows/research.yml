@@ -1,5 +1,18 @@
 name: Semantic moderation validation
-on: [push, pull_request, workflow_dispatch]
+on:
+  push:
+    paths:
+      - 'experiments/evaluate_moderation.py'
+      - 'src/llm_safety_evaluator/moderation.py'
+      - 'src/llm_safety_evaluator/evaluation.py'
+      - 'src/llm_safety_evaluator/lexical.py'
+      - 'src/llm_safety_evaluator/uncertainty.py'
+      - 'tests/**'
+      - 'docs/dashboard.js'
+      - 'requirements-research.txt'
+      - '.github/workflows/research.yml'
+  pull_request:
+  workflow_dispatch:
 concurrency:
   group: moderation-${{ github.ref }}
   cancel-in-progress: false
@@ -55,11 +68,12 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
-          if [ "$(git rev-parse origin/main)" != "$GITHUB_SHA" ]; then
-            echo 'Newer revision exists; measured artifact retained without publishing stale output.'
-            exit 0
-          fi
+          git diff --quiet "$GITHUB_SHA" origin/main -- experiments/evaluate_moderation.py src/llm_safety_evaluator/moderation.py src/llm_safety_evaluator/evaluation.py src/llm_safety_evaluator/lexical.py src/llm_safety_evaluator/uncertainty.py requirements-research.txt
+          git restore -- docs/results/moderation.json
+          git checkout --detach origin/main
+          cp results/moderation.json docs/results/moderation.json
           git add -f -- docs/results/moderation.json
           git diff --cached --quiet && exit 0
           git commit -m "Publish measured benchmark report"
+          git pull --rebase origin main
           git push origin HEAD:main

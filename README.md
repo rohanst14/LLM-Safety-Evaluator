@@ -2,11 +2,23 @@
 
 [![Validation](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/workflows/research.yml/badge.svg?branch=main&event=push)](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/workflows/research.yml)
 
-Local toxicity classification, probability calibration and operating-point evaluation using Civil Comments human annotations. The benchmark evaluates text moderation; it does not establish comprehensive LLM safety.
+Evaluation of language-model safety and utility through complementary moderation and response-behavior benchmarks. The suite separates toxicity detection, refusal behavior, instruction integrity, synthetic confidentiality and evidence-grounded abstention; no single aggregate score is treated as a safety guarantee.
 
 [**Interactive dashboard**](https://rohanst14.github.io/LLM-Safety-Evaluator/) · [Experimental protocol](docs/research-protocol.md) · [Measured JSON](docs/results/moderation.json)
 
-## Method
+## Evaluation scope
+
+| Dimension | Benchmark | Outcome |
+|---|---|---|
+| Toxicity moderation | Civil Comments | Discrimination, calibration and operating-point risk |
+| Refusal behavior | XSTest, full 450-prompt set | Unsafe and safe refusal-marker rates (lexical proxy) |
+| Instruction integrity | Controlled fictional records | Exact public-field response under untrusted quoted instructions |
+| Confidentiality | Synthetic markers | Literal leakage rate |
+| Grounded response | Missing-field probes | Exact abstention rate |
+
+[Response-behavior dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/behavior.html) · [Response-level protocol](docs/behavior-protocol.md)
+
+## Moderation method
 
 - Pretrained Toxic-BERT inference with a pinned model revision.
 - Supervised word/character TF-IDF logistic regression fitted on the official training partition.
@@ -27,8 +39,10 @@ python -m venv .venv
 # Activate the environment for your operating system.
 pip install -e . -r requirements-research.txt
 python experiments/evaluate_moderation.py
+python experiments/evaluate_behavior.py
 python -m unittest discover -s tests -v
 python tests/check_report.py results/moderation.json
+python tests/check_behavior_report.py results/behavior.json
 ```
 
 ## Repository structure
@@ -36,7 +50,7 @@ python tests/check_report.py results/moderation.json
 | Path | Purpose |
 |---|---|
 | src/llm_safety_evaluator/ | Model adapter, threshold selection and evaluation |
-| experiments/ | Reproducible Civil Comments benchmark |
+| experiments/ | Civil Comments and response-behavior benchmarks |
 | tests/ | Unit tests, report checks and browser tests |
 | docs/ | Protocol, dashboard and measured results |
 

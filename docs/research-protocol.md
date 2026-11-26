@@ -1,4 +1,4 @@
-# Experimental protocol
+# Experimental protocol: toxicity moderation
 
 ## 1. Dataset and task
 - Civil Comments: human toxicity annotation fractions; binary label is toxicity ≥ 0.5.
@@ -37,7 +37,7 @@
 - Reference: [Wang and Manning (2012), Baselines and Bigrams](https://aclanthology.org/P12-2018/) for NB-inspired weighting; the implementation uses TF-IDF and logistic regression rather than their NB-SVM.
 
 ## 6. Limitations
-- Human toxicity ratings are contextual and imperfect; this is text moderation, not comprehensive LLM safety or jailbreak resistance.
+- Human toxicity ratings are contextual and imperfect; this track evaluates text moderation. See the separate [response-level behavior protocol](behavior-protocol.md) for complementary safety and utility probes.
 - Pretrained model training overlap has not been ruled out. The dataset and model cards describe distinct Jigsaw tasks but shared domains; do not claim independent external validation.
 - No demographic fairness or subgroup assurance is claimed. The standard Civil Comments split and sampled evaluation do not establish subgroup performance.
 - Dataset may contain offensive text. No raw examples are rendered in the public dashboard.
