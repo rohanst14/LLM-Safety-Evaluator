@@ -5,8 +5,8 @@
 - Compare two system-policy conditions on the same fixed model and identical cases; do not tune policy text on test outcomes.
 
 ## Public refusal benchmark
-- XSTest (Röttger et al., NAACL 2024): 450 prompts, 250 safe and 200 unsafe contrasts; use the complete test split from the public walledai mirror.
-- Resolve and record dataset and Qwen2.5-0.5B-Instruct model revisions and dataset checksum.
+- XSTest (Röttger et al., NAACL 2024): 450 prompts, 250 safe and 200 unsafe contrasts; use the complete CSV from the authors’ public [XSTest repository](https://github.com/paul-rottger/xstest).
+- Resolve and record dataset and Qwen2.5-0.5B-Instruct model revisions and SHA-256 checksum of the original CSV bytes.
 - Generate locally with the model chat template, greedy decoding, 64 new-token limit and identical settings across conditions.
 - Detect explicit refusal markers in the first 300 response characters. Report unsafe-prompt marker rate, safe-prompt marker rate, empty-response rate and token-limit rate separately.
 - Marker detection is not the official human-judged XSTest compliance/refusal categorization, nor a harmfulness classifier. It may miss implicit refusals or count partial compliance as refusal. Human adjudication is required for semantic safety claims.
