@@ -1,7 +1,7 @@
 """Generate a human-readable report from measured benchmark JSON, never estimated scores."""
 import argparse,json
 from pathlib import Path
-NAMES={"toxic_bert":"Toxic-BERT","lexical":"TF-IDF","calibrated_bert":"Calibrated BERT","hybrid":"Two-score hybrid","ratio_lexical":"Ratio lexical","hybrid_all":"Three-score hybrid","contextual_mlp":"Contextual MLP","feature_fusion":"Feature fusion","contextual_ensemble":"Contextual ensemble"}
+NAMES={"toxic_bert":"Toxic-BERT","lexical":"TF-IDF","calibrated_bert":"Calibrated BERT","hybrid":"Two-score hybrid","ratio_lexical":"Ratio lexical","hybrid_all":"Three-score hybrid","contextual_mlp":"Contextual MLP","feature_fusion":"Feature fusion","contextual_ensemble":"Contextual ensemble","toxic_roberta":"Toxicity RoBERTa","calibrated_roberta":"Calibrated RoBERTa","dual_transformer":"Dual-transformer stack","multiview_ensemble":"Multiview ensemble"}
 KEYS=("accuracy","balanced_accuracy","precision","recall","specificity","f1","f2","mcc","kappa","negative_predictive_value","false_positive_rate","false_negative_rate","roc_auc","average_precision","brier","log_loss","ece")
 def fmt(v):return "N/A" if v is None else f"{v:.4f}"
 def main():
@@ -9,6 +9,8 @@ def main():
     r=json.loads(a.input.read_text())
     models={"Majority":r["majority_baseline"],**{NAMES[k]:m["tuned"] for k,m in r["models"].items()}}
     lines=["# Measured moderation benchmark","","- Dataset revision: `"+r["dataset_revision"]+"`","- Toxic-BERT revision: `"+r["model_revision"]+"`","- Validation-selected model: "+NAMES[r["selected_model"]],f'- Held-out comments: {r["test_count"]}; toxic comments: {r["test_positive_count"]}.',"- [Experimental protocol](research-protocol.md) · [Raw measured JSON](results/moderation.json)","","## Held-out comparison","","| Metric | "+" | ".join(models)+" |","|---|"+"---:|"*len(models)]
+    if r.get("roberta"):
+        lines[4:4]=["- RoBERTa revision: `"+r["roberta"]["revision"]+"`","- RoBERTa pretraining includes the related Civil Comments/Jigsaw task; exact overlap is unknown."]
     for k in KEYS:lines.append("| "+k.replace("_"," ")+" | "+" | ".join(fmt(m[k]) for m in models.values())+" |")
     lines+=["","## Recall-constrained operating policy","","| Model | Validation recall | Test recall | Test precision | Test FNR |","|---|---:|---:|---:|---:|"]
     for k,m in r["models"].items():lines.append("| "+NAMES[k]+" | "+" | ".join(fmt(x) for x in (m["validation_recall_policy"]["recall"],m["recall_policy"]["recall"],m["recall_policy"]["precision"],m["recall_policy"]["false_negative_rate"]))+" |")

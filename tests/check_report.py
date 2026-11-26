@@ -3,7 +3,7 @@ import json,sys,math
 from pathlib import Path
 def check(path):
     r=json.loads(Path(path).read_text())
-    if r.get("schema_version") not in (2,3,4):
+    if r.get("schema_version") not in (2,3,4,5):
         assert r["default"]["count"]==r["tuned"]["count"]==r["test_count"]
         return
     assert r["dataset_revision"] and r["model_revision"]
@@ -27,9 +27,12 @@ def check(path):
         assert m["tuned"]["roc_auc"]==m["default"]["roc_auc"]
     assert r["selected_model"]==max(r["models"],key=lambda k:(r["models"][k]["validation_f1"]["f1"] or 0,k))
     if r["schema_version"]>=3:
-        assert len(r["models"])==(9 if r["schema_version"]==4 else 6)
-        if r["schema_version"]==4:
+        assert len(r["models"])==({3:6,4:9,5:13}[r["schema_version"]])
+        if r["schema_version"]>=4:
             assert r["encoder"]["revision"] and r["encoder"]["frozen"] is True
+        if r["schema_version"]==5:
+            assert r["roberta"]["revision"] and r["roberta"]["id"]=="unitary/unbiased-toxic-roberta"
+            assert {"toxic_roberta","calibrated_roberta","dual_transformer","multiview_ensemble"}<=set(r["models"])
         u=r["uncertainty"];assert u["replicates"]==1000
         assert set(u["metrics"])=={"f1","recall","balanced_accuracy","average_precision","roc_auc","brier"}
         for k,m in u["metrics"].items():

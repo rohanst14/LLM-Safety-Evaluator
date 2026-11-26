@@ -22,6 +22,10 @@
 - The encoder is frozen, with 256-token truncation and a resolved model revision. No toxicity labels from validation or test are used to train its supervised heads. General pretraining overlap cannot be ruled out.
 - Source: [MiniLM model card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2).
 
+- Task-specialized RoBERTa: `unitary/unbiased-toxic-roberta`, resolved revision, toxicity sigmoid with 512-token truncation. This checkpoint was trained for the Jigsaw unintended-bias task on Civil Comments; exact evaluation-split overlap is not established. Treat it as a potentially in-domain pretrained comparator, not independent evidence of generalization.
+- Calibrated RoBERTa, dual-transformer logit stack, and six-score multiview ensemble combining both pretrained toxicity models, lexical and ratio-weighted lexical heads, feature fusion and contextual MLP; fit all stacks on the calibration subset only.
+- Source: [RoBERTa model card](https://huggingface.co/unitary/unbiased-toxic-roberta).
+
 ## 3. Validation and operating points
 - Stratify validation into equal calibration and policy partitions; fit recalibration and stacking only on the calibration partition.
 - Select F1-maximizing threshold on the policy partition over 0–1 at 0.01 intervals (higher threshold breaks ties).
@@ -50,6 +54,6 @@
 
 ## 7. Reproducibility
 - Run `python experiments/evaluate_moderation.py --limit 2000 --train-limit 30000` after dependency installation.
-- For exact reruns, pass the dataset, model and encoder revisions recorded in the measured JSON.
+- For exact reruns, pass the dataset, BERT, RoBERTa and encoder revisions recorded in the measured JSON.
 - Validate the output with `python tests/check_report.py results/moderation.json`.
 - Sources: [Civil Comments](https://huggingface.co/datasets/google/civil_comments), [Toxic-BERT model card](https://huggingface.co/unitary/toxic-bert).

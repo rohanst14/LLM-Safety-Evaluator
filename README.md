@@ -23,11 +23,14 @@ Evaluation of language-model safety and utility through complementary moderation
 - Pretrained Toxic-BERT inference with a pinned model revision.
 - Supervised word/character TF-IDF logistic regression fitted on the official training partition.
 - Supervised log-ratio feature weighting, frozen MiniLM contextual embeddings, nonlinear MLP and sparse/dense feature fusion.
-- Regularized two-, three- and five-score hybrid stacking.
+- Task-specialized RoBERTa reference, logistic recalibration, and dual-transformer/multiview stacking.
+- Regularized two-, three-, five- and six-score hybrid stacking.
 - Logistic recalibration and hybrid stacking fitted on a separate calibration subset.
 - F1-selected thresholds and recall-constrained operating points selected on a disjoint policy subset.
 - Common held-out test sample; comprehensive classification, discrimination and calibration metrics.
 - Paired stratified bootstrap intervals and descriptive error slices, with minimum class support for rate reporting.
+
+The RoBERTa checkpoint was trained on the related Jigsaw Civil Comments task; exact held-out overlap is not established, so its results are an in-domain comparison rather than independent external validation.
 
 The dashboard reads the measured report and displays the actual comparison, including the validation-selected model and test trade-offs. The prior single-model experiment remains available in Git history. The expanded report is published only after execution and validation.
 

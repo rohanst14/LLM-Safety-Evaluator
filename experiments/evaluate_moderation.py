@@ -18,6 +18,7 @@ from llm_safety_evaluator.evaluation import (metrics,calibrate,calibrated_predic
 DATASET="google/civil_comments"
 MODEL="unitary/toxic-bert"
 MODEL_REVISION="4d6c22e74ba2fdd26bc4f7238f50766b045a0d94"
+ROBERTA="unitary/unbiased-toxic-roberta"
 
 def read_split(split,n,seed,revision,seen):
     from datasets import load_dataset
@@ -42,6 +43,7 @@ def main():
     p.add_argument("--dataset-revision")
     p.add_argument("--model-revision",default=MODEL_REVISION)
     p.add_argument("--encoder-revision")
+    p.add_argument("--roberta-revision")
     p.add_argument("--output",type=Path,default=Path("results/moderation.json"))
     a=p.parse_args()
     if not 500<=a.limit<=10000 or not 1000<=a.train_limit<=100000: p.error("Invalid split size")
@@ -73,6 +75,16 @@ def main():
     print("Running Toxic-BERT reference inference",flush=True)
     bert=ToxicityModel(model_id=MODEL,revision=a.model_revision)
     bv=np.asarray(bert.predict(val));bt=np.asarray(bert.predict(test))
+    bert_revision=bert.revision or a.model_revision
+    del bert
+    roberta_revision=HfApi().model_info(ROBERTA,revision=a.roberta_revision).sha
+    print("Running task-specialized RoBERTa inference",flush=True)
+    roberta=ToxicityModel(model_id=ROBERTA,revision=roberta_revision)
+    uv=np.asarray(roberta.predict(val));ut=np.asarray(roberta.predict(test))
+    del roberta
+    calibrated_roberta=calibrate(vy[cal],[uv[cal]])
+    dual=calibrate(vy[cal],[bv[cal],uv[cal]])
+    full=calibrate(vy[cal],[bv[cal],uv[cal],lv[cal],rv[cal],fv[cal],nv[cal]])
     cb=calibrate(vy[cal],[bv[cal]])
     stack=calibrate(vy[cal],[bv[cal],lv[cal]])
     stack_all=calibrate(vy[cal],[bv[cal],lv[cal],rv[cal]])
@@ -85,7 +97,11 @@ def main():
         "ratio_lexical":(rv,rt),
         "hybrid_all":(calibrated_predict(stack_all,[bv,lv,rv]),calibrated_predict(stack_all,[bt,lt,rt])),
         "contextual_mlp":(nv,nt),"feature_fusion":(fv,ft),
-        "contextual_ensemble":(calibrated_predict(stack_context,[bv,lv,rv,fv,nv]),calibrated_predict(stack_context,[bt,lt,rt,ft,nt]))}
+        "contextual_ensemble":(calibrated_predict(stack_context,[bv,lv,rv,fv,nv]),calibrated_predict(stack_context,[bt,lt,rt,ft,nt])),
+        "toxic_roberta":(uv,ut),
+        "calibrated_roberta":(calibrated_predict(calibrated_roberta,[uv]),calibrated_predict(calibrated_roberta,[ut])),
+        "dual_transformer":(calibrated_predict(dual,[bv,uv]),calibrated_predict(dual,[bt,ut])),
+        "multiview_ensemble":(calibrated_predict(full,[bv,uv,lv,rv,fv,nv]),calibrated_predict(full,[bt,ut,lt,rt,ft,nt]))}
     prevalence=float(train_y.mean())
     models={}
     for key,(v,t) in candidates.items():
@@ -101,7 +117,7 @@ def main():
     paired=paired_correctness(ty,bt,ref["threshold"],candidates[selected][1],cand["threshold"])
     intervals=paired_bootstrap(ty,bt,ref["threshold"],candidates[selected][1],cand["threshold"])
     slices={k:strata(ty,t,models[k]["tuned"]["threshold"],[len(s.split()) for s in test],test_annotation) for k,(_,t) in candidates.items()}
-    report={"schema_version":4,"encoder":{"id":ENCODER,"revision":encoder_revision,"max_tokens":256,"pooling":"attention-masked mean; L2 normalized","frozen":True},"uncertainty":intervals,"error_slices":slices,"dataset":DATASET,"dataset_revision":revision,"model":MODEL,"model_revision":bert.revision or a.model_revision,
+    report={"schema_version":5,"roberta":{"id":ROBERTA,"revision":roberta_revision,"training_overlap":"Civil Comments/Jigsaw unintended bias training source; exact held-out overlap not established"},"encoder":{"id":ENCODER,"revision":encoder_revision,"max_tokens":256,"pooling":"attention-masked mean; L2 normalized","frozen":True},"uncertainty":intervals,"error_slices":slices,"dataset":DATASET,"dataset_revision":revision,"model":MODEL,"model_revision":bert_revision,
         "seed":42,"label_rule":"toxicity >= 0.5","sampling":"bounded-buffer shuffle (10000), normalized-text duplicate removal in train/validation/test order",
         "splits":{"train":train_info,"validation":val_info,"test":test_info,"calibration":{"count":len(cal),"positive_count":int(vy[cal].sum())},"policy":{"count":len(policy),"positive_count":int(vy[policy].sum())}},
         "test_count":len(ty),"test_positive_count":int(ty.sum()),"validation_count":len(vy),
