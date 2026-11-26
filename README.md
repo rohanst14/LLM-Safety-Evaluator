@@ -22,7 +22,8 @@ Evaluation of language-model safety and utility through complementary moderation
 
 - Pretrained Toxic-BERT inference with a pinned model revision.
 - Supervised word/character TF-IDF logistic regression fitted on the official training partition.
-- Supervised log-ratio feature weighting and regularized two- and three-score hybrid stacking.
+- Supervised log-ratio feature weighting, frozen MiniLM contextual embeddings, nonlinear MLP and sparse/dense feature fusion.
+- Regularized two-, three- and five-score hybrid stacking.
 - Logistic recalibration and hybrid stacking fitted on a separate calibration subset.
 - F1-selected thresholds and recall-constrained operating points selected on a disjoint policy subset.
 - Common held-out test sample; comprehensive classification, discrimination and calibration metrics.

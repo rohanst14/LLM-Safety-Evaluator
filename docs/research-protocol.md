@@ -16,6 +16,12 @@
 - Ratio-weighted lexical: smoothed class-conditional document-frequency log ratios multiply TF-IDF features, followed by L2 logistic regression. This is NB-inspired feature weighting, not NB-SVM.
 - Three-score hybrid: logistic stacking of transformer, lexical and ratio-weighted lexical log-odds, fitted on calibration only.
 
+- Contextual MLP: frozen all-MiniLM-L6-v2, attention-masked mean pooling and L2-normalized 384-dimensional embeddings; 128/64-unit MLP with early stopping on a 15% internal training subset.
+- Feature fusion: concatenate sparse word/character TF-IDF and contextual embeddings scaled by 3; fit L2 logistic regression (C=8) using official training labels.
+- Contextual ensemble: calibrate a five-score stack of Toxic-BERT, lexical, ratio-weighted lexical, feature fusion and contextual MLP on the independent calibration subset.
+- The encoder is frozen, with 256-token truncation and a resolved model revision. No toxicity labels from validation or test are used to train its supervised heads. General pretraining overlap cannot be ruled out.
+- Source: [MiniLM model card](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2).
+
 ## 3. Validation and operating points
 - Stratify validation into equal calibration and policy partitions; fit recalibration and stacking only on the calibration partition.
 - Select F1-maximizing threshold on the policy partition over 0–1 at 0.01 intervals (higher threshold breaks ties).
@@ -44,6 +50,6 @@
 
 ## 7. Reproducibility
 - Run `python experiments/evaluate_moderation.py --limit 2000 --train-limit 30000` after dependency installation.
-- For exact reruns, pass the dataset and model revisions recorded in the measured JSON.
+- For exact reruns, pass the dataset, model and encoder revisions recorded in the measured JSON.
 - Validate the output with `python tests/check_report.py results/moderation.json`.
 - Sources: [Civil Comments](https://huggingface.co/datasets/google/civil_comments), [Toxic-BERT model card](https://huggingface.co/unitary/toxic-bert).

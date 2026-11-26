@@ -6,6 +6,8 @@ on:
       - 'src/llm_safety_evaluator/moderation.py'
       - 'src/llm_safety_evaluator/evaluation.py'
       - 'src/llm_safety_evaluator/lexical.py'
+      - 'src/llm_safety_evaluator/encoder.py'
+      - 'experiments/render_report.py'
       - 'src/llm_safety_evaluator/uncertainty.py'
       - 'tests/**'
       - 'docs/dashboard.js'
@@ -38,7 +40,7 @@ jobs:
       contents: write
     if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       OPENBLAS_NUM_THREADS: '2'
       OMP_NUM_THREADS: '4'
@@ -52,6 +54,7 @@ jobs:
       - run: pip install -e . -r requirements-research.txt
       - run: python experiments/evaluate_moderation.py --limit 2000 --train-limit 30000
       - run: python tests/check_report.py results/moderation.json
+      - run: python experiments/render_report.py results/moderation.json results/experimental-report.md
       - run: cp results/moderation.json docs/results/moderation.json
       - run: npm install --no-save --no-package-lock playwright
       - run: npx playwright install --with-deps chromium
@@ -59,7 +62,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: moderation-report
-          path: results/moderation.json
+          path: |
+            results/moderation.json
+            results/experimental-report.md
       - name: Publish measured report
         if: github.ref == 'refs/heads/main'
         run: |
@@ -68,11 +73,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin main
-          git diff --quiet "$GITHUB_SHA" origin/main -- experiments/evaluate_moderation.py src/llm_safety_evaluator/moderation.py src/llm_safety_evaluator/evaluation.py src/llm_safety_evaluator/lexical.py src/llm_safety_evaluator/uncertainty.py requirements-research.txt
+          if ! git diff --quiet "$GITHUB_SHA" origin/main -- experiments/evaluate_moderation.py experiments/render_report.py src/llm_safety_evaluator/moderation.py src/llm_safety_evaluator/evaluation.py src/llm_safety_evaluator/lexical.py src/llm_safety_evaluator/encoder.py src/llm_safety_evaluator/uncertainty.py requirements-research.txt; then
+            echo "Superseded benchmark; retaining artifact only."
+            exit 0
+          fi
           git restore -- docs/results/moderation.json
           git checkout --detach origin/main
           cp results/moderation.json docs/results/moderation.json
-          git add -f -- docs/results/moderation.json
+          cp results/experimental-report.md docs/experimental-report.md
+          git add -f -- docs/results/moderation.json docs/experimental-report.md
           git diff --cached --quiet && exit 0
           git commit -m "Publish measured benchmark report"
           git pull --rebase origin main

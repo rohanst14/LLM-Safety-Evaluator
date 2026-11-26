@@ -43,9 +43,12 @@ class ToxicityModel:
     def predict(self,texts,batch_size=16):
         import torch
         if batch_size<1: raise ValueError("Invalid batch size")
-        scores=[]
+        scores=[None]*len(texts)
+        order=sorted(range(len(texts)),key=lambda i:len(texts[i]))
         with torch.inference_mode():
-            for start in range(0,len(texts),batch_size):
-                encoded=self.tokenizer(texts[start:start+batch_size],padding=True,truncation=True,max_length=512,return_tensors="pt")
-                scores.extend(self.model(**encoded).logits.sigmoid()[:,self.index].tolist())
+            for start in range(0,len(order),batch_size):
+                ix=order[start:start+batch_size]
+                encoded=self.tokenizer([texts[i] for i in ix],padding=True,truncation=True,max_length=512,return_tensors="pt")
+                values=self.model(**encoded).logits.sigmoid()[:,self.index].tolist()
+                for i,value in zip(ix,values): scores[i]=value
         return scores

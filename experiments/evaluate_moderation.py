@@ -1,6 +1,5 @@
 """Fit and evaluate toxicity models on disjoint official Civil Comments partitions."""
 import argparse,hashlib,json,platform,os
-from itertools import islice
 from pathlib import Path
 from importlib.metadata import version
 import numpy as np
@@ -11,6 +10,7 @@ from sklearn.linear_model import LogisticRegression
 from huggingface_hub import HfApi
 from llm_safety_evaluator.moderation import ToxicityModel,choose_threshold
 from llm_safety_evaluator.lexical import RatioWeightedLogistic
+from llm_safety_evaluator.encoder import FrozenEncoder,ENCODER,fuse,fit_heads
 from llm_safety_evaluator.uncertainty import paired_bootstrap,strata
 from llm_safety_evaluator.evaluation import (metrics,calibrate,calibrated_predict,
     policy_threshold,ranking_curves,paired_correctness)
@@ -41,6 +41,7 @@ def main():
     p.add_argument("--train-limit",type=int,default=30000)
     p.add_argument("--dataset-revision")
     p.add_argument("--model-revision",default=MODEL_REVISION)
+    p.add_argument("--encoder-revision")
     p.add_argument("--output",type=Path,default=Path("results/moderation.json"))
     a=p.parse_args()
     if not 500<=a.limit<=10000 or not 1000<=a.train_limit<=100000: p.error("Invalid split size")
@@ -61,18 +62,30 @@ def main():
     rv=ratio.predict_proba(xv)[:,1];rt=ratio.predict_proba(xt)[:,1]
     import torch
     torch.set_num_threads(min(4,os.cpu_count() or 1))
+    encoder_revision=HfApi().model_info(ENCODER,revision=a.encoder_revision).sha
+    print("Encoding training, validation and test text with frozen MiniLM",flush=True)
+    encoder=FrozenEncoder(encoder_revision)
+    et=encoder.encode(train);ev=encoder.encode(val);es=encoder.encode(test)
+    linear,nonlinear=fit_heads(x,et,train_y)
+    fv=linear.predict_proba(fuse(xv,ev))[:,1];ft=linear.predict_proba(fuse(xt,es))[:,1]
+    nv=nonlinear.predict_proba(10.*ev)[:,1];nt=nonlinear.predict_proba(10.*es)[:,1]
+    del encoder,et,ev,es
+    print("Running Toxic-BERT reference inference",flush=True)
     bert=ToxicityModel(model_id=MODEL,revision=a.model_revision)
     bv=np.asarray(bert.predict(val));bt=np.asarray(bert.predict(test))
     cb=calibrate(vy[cal],[bv[cal]])
     stack=calibrate(vy[cal],[bv[cal],lv[cal]])
     stack_all=calibrate(vy[cal],[bv[cal],lv[cal],rv[cal]])
+    stack_context=calibrate(vy[cal],[bv[cal],lv[cal],rv[cal],fv[cal],nv[cal]])
     candidates={
         "toxic_bert":(bv,bt),
         "lexical":(lv,lt),
         "calibrated_bert":(calibrated_predict(cb,[bv]),calibrated_predict(cb,[bt])),
         "hybrid":(calibrated_predict(stack,[bv,lv]),calibrated_predict(stack,[bt,lt])),
         "ratio_lexical":(rv,rt),
-        "hybrid_all":(calibrated_predict(stack_all,[bv,lv,rv]),calibrated_predict(stack_all,[bt,lt,rt]))}
+        "hybrid_all":(calibrated_predict(stack_all,[bv,lv,rv]),calibrated_predict(stack_all,[bt,lt,rt])),
+        "contextual_mlp":(nv,nt),"feature_fusion":(fv,ft),
+        "contextual_ensemble":(calibrated_predict(stack_context,[bv,lv,rv,fv,nv]),calibrated_predict(stack_context,[bt,lt,rt,ft,nt]))}
     prevalence=float(train_y.mean())
     models={}
     for key,(v,t) in candidates.items():
@@ -88,7 +101,7 @@ def main():
     paired=paired_correctness(ty,bt,ref["threshold"],candidates[selected][1],cand["threshold"])
     intervals=paired_bootstrap(ty,bt,ref["threshold"],candidates[selected][1],cand["threshold"])
     slices={k:strata(ty,t,models[k]["tuned"]["threshold"],[len(s.split()) for s in test],test_annotation) for k,(_,t) in candidates.items()}
-    report={"schema_version":3,"uncertainty":intervals,"error_slices":slices,"dataset":DATASET,"dataset_revision":revision,"model":MODEL,"model_revision":bert.revision or a.model_revision,
+    report={"schema_version":4,"encoder":{"id":ENCODER,"revision":encoder_revision,"max_tokens":256,"pooling":"attention-masked mean; L2 normalized","frozen":True},"uncertainty":intervals,"error_slices":slices,"dataset":DATASET,"dataset_revision":revision,"model":MODEL,"model_revision":bert.revision or a.model_revision,
         "seed":42,"label_rule":"toxicity >= 0.5","sampling":"bounded-buffer shuffle (10000), normalized-text duplicate removal in train/validation/test order",
         "splits":{"train":train_info,"validation":val_info,"test":test_info,"calibration":{"count":len(cal),"positive_count":int(vy[cal].sum())},"policy":{"count":len(policy),"positive_count":int(vy[policy].sum())}},
         "test_count":len(ty),"test_positive_count":int(ty.sum()),"validation_count":len(vy),
