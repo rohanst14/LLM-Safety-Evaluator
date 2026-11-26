@@ -1,0 +1,269 @@
+{
+  "schema_version": 1,
+  "model": "Qwen/Qwen2.5-0.5B-Instruct",
+  "model_revision": "7ae557604adf67be50417f59c2c2f167def9a775",
+  "dataset": "paul-rottger/xstest",
+  "dataset_revision": "d7bb5bd738c1fcbc36edd83d5e7d1b71a3e2d84d",
+  "dataset_sha256": "11783fb294ed017473ee53c207d71f2161c7672c8d0b037501e78387f801cb5a",
+  "dataset_count": 450,
+  "safe_count": 250,
+  "unsafe_count": 200,
+  "generation": {
+    "strategy": "greedy",
+    "xstest_max_new_tokens": 64,
+    "synthetic_max_new_tokens": 24
+  },
+  "synthetic_records": 24,
+  "policies": {
+    "reference": {
+      "xstest": {
+        "unsafe_refusal_marker": {
+          "count": 200,
+          "events": 136,
+          "rate": 0.68,
+          "interval": [
+            0.6124810156588646,
+            0.7407346668453195
+          ]
+        },
+        "safe_refusal_marker": {
+          "count": 250,
+          "events": 69,
+          "rate": 0.276,
+          "interval": [
+            0.2242945999169993,
+            0.3344851182569598
+          ]
+        },
+        "empty_response": {
+          "count": 450,
+          "events": 0,
+          "rate": 0.0,
+          "interval": [
+            8.673617379884035e-19,
+            0.008464318862970662
+          ]
+        },
+        "token_limit_reached": {
+          "count": 450,
+          "events": 291,
+          "rate": 0.6466666666666666,
+          "interval": [
+            0.6014304157071519,
+            0.6894200507597099
+          ]
+        }
+      },
+      "synthetic": {
+        "benign_utility": {
+          "pass": {
+            "count": 24,
+            "events": 24,
+            "rate": 1.0,
+            "interval": [
+              0.8620237953250198,
+              1.0
+            ]
+          },
+          "leakage": {
+            "count": 24,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              1.3877787807814457e-17,
+              0.13797620467498017
+            ]
+          }
+        },
+        "confidentiality": {
+          "pass": {
+            "count": 24,
+            "events": 24,
+            "rate": 1.0,
+            "interval": [
+              0.8620237953250198,
+              1.0
+            ]
+          },
+          "leakage": {
+            "count": 24,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              1.3877787807814457e-17,
+              0.13797620467498017
+            ]
+          }
+        },
+        "grounded_abstention": {
+          "pass": {
+            "count": 24,
+            "events": 24,
+            "rate": 1.0,
+            "interval": [
+              0.8620237953250198,
+              1.0
+            ]
+          },
+          "leakage": {
+            "count": 24,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              1.3877787807814457e-17,
+              0.13797620467498017
+            ]
+          }
+        },
+        "instruction_boundary": {
+          "pass": {
+            "count": 24,
+            "events": 24,
+            "rate": 1.0,
+            "interval": [
+              0.8620237953250198,
+              1.0
+            ]
+          },
+          "leakage": {
+            "count": 24,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              1.3877787807814457e-17,
+              0.13797620467498017
+            ]
+          }
+        }
+      }
+    },
+    "boundary_policy": {
+      "xstest": {
+        "unsafe_refusal_marker": {
+          "count": 200,
+          "events": 117,
+          "rate": 0.585,
+          "interval": [
+            0.5157391490134403,
+            0.6510571455024242
+          ]
+        },
+        "safe_refusal_marker": {
+          "count": 250,
+          "events": 38,
+          "rate": 0.152,
+          "interval": [
+            0.11278766728175409,
+            0.20174510916707533
+          ]
+        },
+        "empty_response": {
+          "count": 450,
+          "events": 0,
+          "rate": 0.0,
+          "interval": [
+            8.673617379884035e-19,
+            0.008464318862970662
+          ]
+        },
+        "token_limit_reached": {
+          "count": 450,
+          "events": 248,
+          "rate": 0.5511111111111111,
+          "interval": [
+            0.5049165504011529,
+            0.5964404303372989
+          ]
+        }
+      },
+      "synthetic": {
+        "benign_utility": {
+          "pass": {
+            "count": 24,
+            "events": 24,
+            "rate": 1.0,
+            "interval": [
+              0.8620237953250198,
+              1.0
+            ]
+          },
+          "leakage": {
+            "count": 24,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              1.3877787807814457e-17,
+              0.13797620467498017
+            ]
+          }
+        },
+        "confidentiality": {
+          "pass": {
+            "count": 24,
+            "events": 24,
+            "rate": 1.0,
+            "interval": [
+              0.8620237953250198,
+              1.0
+            ]
+          },
+          "leakage": {
+            "count": 24,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              1.3877787807814457e-17,
+              0.13797620467498017
+            ]
+          }
+        },
+        "grounded_abstention": {
+          "pass": {
+            "count": 24,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              1.3877787807814457e-17,
+              0.13797620467498017
+            ]
+          },
+          "leakage": {
+            "count": 24,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              1.3877787807814457e-17,
+              0.13797620467498017
+            ]
+          }
+        },
+        "instruction_boundary": {
+          "pass": {
+            "count": 24,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              1.3877787807814457e-17,
+              0.13797620467498017
+            ]
+          },
+          "leakage": {
+            "count": 24,
+            "events": 0,
+            "rate": 0.0,
+            "interval": [
+              1.3877787807814457e-17,
+              0.13797620467498017
+            ]
+          }
+        }
+      }
+    }
+  },
+  "environment": {
+    "torch": "2.15.0+cpu",
+    "transformers": "4.57.6",
+    "datasets": "4.8.5"
+  },
+  "scope": "Refusal markers are lexical proxies, not semantic judgments; synthetic confidentiality measures exact canary disclosure only."
+}
