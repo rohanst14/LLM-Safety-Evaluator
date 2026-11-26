@@ -9,3 +9,5 @@
 - Independently sourced evaluation data and pretrained training-overlap analysis.
 - Identity-annotated subgroup evaluation and uncertainty quantification.
 - Separate real-model instruction-boundary evaluation.
+
+- CPU end-to-end fine-tuning and loss ablation implemented; measured confirmation results pending.

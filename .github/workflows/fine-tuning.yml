@@ -1,0 +1,56 @@
+name: CPU transformer fine-tuning
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'experiments/fine_tune.py'
+      - 'src/llm_safety_evaluator/fine_tuning.py'
+      - 'tests/test_fine_tuning.py'
+      - 'tests/check_fine_tuning_report.py'
+      - '.github/workflows/fine-tuning.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: fine-tuning-main
+  cancel-in-progress: false
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      OMP_NUM_THREADS: '4'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '4'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: pip install -e . -r requirements-research.txt
+      - run: python -m unittest discover -s tests -v
+      - run: python -m compileall -q src experiments tests
+      - run: node --check docs/fine-tuning.js
+      - run: python experiments/fine_tune.py
+      - run: python tests/check_fine_tuning_report.py results/fine-tuning.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpu-fine-tuning-report
+          path: results/fine-tuning.json
+      - name: Publish measured report
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git diff --quiet "$GITHUB_SHA" origin/main -- experiments/fine_tune.py src/llm_safety_evaluator/fine_tuning.py tests/check_fine_tuning_report.py
+            git checkout --detach --force origin/main
+            mkdir -p docs/results
+            cp results/fine-tuning.json docs/results/fine-tuning.json
+            git add -f -- docs/results/fine-tuning.json
+            if git diff --cached --quiet; then exit 0; fi
+            git commit -m "Publish measured CPU fine-tuning report"
+            if git push origin HEAD:main; then exit 0; fi
+          done
+          exit 1

@@ -54,6 +54,12 @@ The [completed Qwen2.5-0.5B-Instruct experiment](https://github.com/rohanst14/LL
 
 The boundary-aware policy reduces safe-prompt refusal markers but is not a uniform improvement. Refusal-marker rates are lexical proxies; high token-limit rates and exact-match sensitivity limit interpretation. See the [measured response report](docs/behavior-report.md).
 
+## CPU fine-tuning experiment
+
+A separate [fine-tuning protocol](docs/fine-tuning-protocol.md) compares full BERT-Mini encoder adaptation with BCE, weighted BCE and focal loss against matched reference classifiers. The confirmation sample excludes the previously examined test comments. Results are published only after successful execution.
+
+[Fine-tuning dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/fine-tuning.html)
+
 ## Run locally
 
 ```bash
@@ -64,6 +70,8 @@ python -m venv .venv
 pip install -e . -r requirements-research.txt
 python experiments/evaluate_moderation.py
 python experiments/evaluate_behavior.py
+# Optional CPU training experiment:
+python experiments/fine_tune.py
 python -m unittest discover -s tests -v
 python tests/check_report.py results/moderation.json
 python tests/check_behavior_report.py results/behavior.json
