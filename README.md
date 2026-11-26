@@ -32,7 +32,13 @@ Evaluation of language-model safety and utility through complementary moderation
 
 The RoBERTa checkpoint was trained on the related Jigsaw Civil Comments task; exact held-out overlap is not established, so its results are an in-domain comparison rather than independent external validation.
 
-The dashboard reads the measured report and displays the actual comparison, including the validation-selected model and test trade-offs. The prior single-model experiment remains available in Git history. The expanded report is published only after execution and validation.
+The dashboard reads the measured report and displays the actual comparison, including the validation-selected model and test trade-offs. The prior single-model experiment remains available in Git history. The dashboard reports the latest successfully published results; newer configurations are experimental until their measured reports are validated.
+
+## Verified comparative benchmark (schema 3)
+
+The [completed six-classifier experiment](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/runs/45758172050) used 30,000 training, 2,000 validation and 2,000 test comments (154 test positives). The validation-selected three-score hybrid improved F1 from 0.5385 to 0.6370 and average precision from 0.5672 to 0.6824 compared with tuned Toxic-BERT. Paired 95% bootstrap intervals for F1 difference: [0.0435, 0.1487]; for recall difference: [-0.0519, 0.0714]. The recall-constrained ratio-weighted lexical model achieved test recall 0.8312, with precision 0.3307. This is a safety–utility trade-off, not a universal safety guarantee. These are results of the earlier schema-3 configuration, not of the newer contextual or RoBERTa models.
+
+[Measured artifact](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/runs/45758172050/artifacts/15089500134)
 
 ## Run locally
 
