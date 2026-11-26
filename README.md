@@ -12,9 +12,40 @@ A research framework for evaluating language-model safety, reliability and utili
 - Assess probability reliability and risk-aware operating policies through independent calibration and threshold selection.
 - Evaluate response behavior across refusal, instruction integrity, confidentiality, grounded abstention and benign-task utility.
 
-## Measured moderation benchmark
+## Methodology
 
-Civil Comments: 30,000 training comments, 2,000 validation comments and 2,000 held-out test comments. The expanded experiment compares 13 classifier configurations and a majority-class reference.
+### Toxicity classification and calibration
+
+- Contextual inference with pretrained Toxic-BERT and task-specialized RoBERTa.
+- Supervised word/character TF-IDF, log-ratio feature weighting, MiniLM embeddings, nonlinear MLP and sparse/dense feature fusion.
+- Regularized probability stacking with independent calibration and validation-selected decision thresholds.
+- Shared held-out evaluation, class-sensitive metrics, calibration diagnostics and paired bootstrap analysis.
+
+[Integrated methodology](docs/methodology.md) · [Moderation protocol](docs/research-protocol.md) · [Completed benchmark workflow](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/runs/45758913740)
+
+### Response-level evaluation
+
+Local Qwen2.5-0.5B-Instruct generation under two system-policy conditions. The experiment measures refusal markers, public-field retrieval, instruction-boundary exact match, literal confidentiality leakage and grounded abstention.
+
+[Response-level dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/behavior.html) · [Protocol](docs/behavior-protocol.md)
+
+### Transformer fine-tuning
+
+The CPU fine-tuning experiment implements full BERT-Mini encoder adaptation with a controlled BCE, weighted BCE and focal-loss ablation. Checkpoint selection uses internal development average precision; calibration and policy selection use separate validation subsets. Matched reference classifiers and a previously unreported confirmation sample support comparative analysis. Measured results are published separately after the experiment completes.
+
+[Fine-tuning protocol](docs/fine-tuning-protocol.md) · [Fine-tuning dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/fine-tuning.html)
+
+## Experimental setup
+
+| Experiment | Dataset | Evaluation design |
+|---|---|---|
+| Toxicity moderation | Civil Comments | 30,000 training, 2,000 validation and 2,000 held-out test comments; 13 classifier configurations and a majority reference |
+| Response-level evaluation | XSTest and controlled fictional records | 450 benchmark prompts and 96 controlled probes per policy |
+| Transformer fine-tuning | Civil Comments | Stratified fit and development subsets, separate calibration and policy partitions, and a previously unreported confirmation sample |
+
+## Experimental results
+
+### Toxicity moderation
 
 | Metric | Toxic-BERT | Toxicity RoBERTa | Multiview ensemble |
 |---|---:|---:|---:|
@@ -30,26 +61,13 @@ Civil Comments: 30,000 training comments, 2,000 validation comments and 2,000 he
 
 The validation-selected multiview ensemble achieves 95.20% accuracy and 76.36% average precision, leading the 13 classifiers on both metrics. The RoBERTa comparator achieves the highest observed positive-class F1 (68.89%), while calibrated RoBERTa leads on recall (81.17%) at the F1-selected operating points. Full model comparisons, checkpoint provenance, operating-point analysis and paired uncertainty intervals are provided in the [experimental report](docs/experimental-report.md) and [measured JSON](docs/results/moderation.json).
 
-## Methodology
+### Response-level evaluation
 
-- Contextual inference with pretrained Toxic-BERT and task-specialized RoBERTa.
-- Supervised word/character TF-IDF, log-ratio feature weighting, MiniLM embeddings, nonlinear MLP and sparse/dense feature fusion.
-- Regularized probability stacking with independent calibration and validation-selected decision thresholds.
-- Shared held-out evaluation, class-sensitive metrics, calibration diagnostics and paired bootstrap analysis.
+[Measured response-level report](docs/behavior-report.md) · [Interactive response dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/behavior.html)
 
-[Integrated methodology](docs/methodology.md) · [Moderation protocol](docs/research-protocol.md) · [Completed benchmark workflow](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/runs/45758913740)
+### Transformer fine-tuning
 
-## Response-level evaluation
-
-Local Qwen2.5-0.5B-Instruct generation on all 450 XSTest prompts and 96 controlled probes per policy. The experiment measures refusal markers, public-field retrieval, instruction-boundary exact match, literal confidentiality leakage and grounded abstention.
-
-[Response-level dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/behavior.html) · [Protocol](docs/behavior-protocol.md) · [Measured results](docs/behavior-report.md)
-
-## Transformer fine-tuning
-
-The CPU fine-tuning experiment implements full BERT-Mini encoder adaptation with a controlled BCE, weighted BCE and focal-loss ablation. Checkpoint selection uses internal development average precision; calibration and policy selection use separate validation subsets. Matched reference classifiers and a previously unreported confirmation sample support comparative analysis. Measured results are published separately after the experiment completes.
-
-[Fine-tuning protocol](docs/fine-tuning-protocol.md) · [Fine-tuning dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/fine-tuning.html)
+[Fine-tuning dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/fine-tuning.html)
 
 ## Reproduce
 
