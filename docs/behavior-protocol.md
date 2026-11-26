@@ -6,7 +6,7 @@
 
 ## Public refusal benchmark
 - XSTest (Röttger et al., NAACL 2024): 450 prompts, 250 safe and 200 unsafe contrasts; use the complete CSV from the authors’ public [XSTest repository](https://github.com/paul-rottger/xstest).
-- Resolve and record dataset and Qwen2.5-0.5B-Instruct model revisions and SHA-256 checksum of the original CSV bytes.
+- Pin the XSTest commit and Qwen2.5-0.5B-Instruct checkpoint to the revisions recorded in the completed benchmark; verify the SHA-256 checksum of the original CSV before inference.
 - Generate locally with the model chat template, greedy decoding, 64 new-token limit and identical settings across conditions.
 - Detect explicit refusal markers in the first 300 response characters. Report unsafe-prompt marker rate, safe-prompt marker rate, empty-response rate and token-limit rate separately.
 - Marker detection is not the official human-judged XSTest compliance/refusal categorization, nor a harmfulness classifier. It may miss implicit refusals or count partial compliance as refusal. Human adjudication is required for semantic safety claims.
@@ -28,4 +28,4 @@
 ## Reproduce
 - Run `python experiments/evaluate_behavior.py` after installing research dependencies.
 - Validate with `python tests/check_behavior_report.py results/behavior.json`.
-- Use recorded revisions for repeat runs.
+- Run `python experiments/evaluate_behavior.py --check-data` for a dataset-only provenance check. The default revisions match the published experiment.
