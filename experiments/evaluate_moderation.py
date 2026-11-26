@@ -10,6 +10,8 @@ from sklearn.pipeline import FeatureUnion
 from sklearn.linear_model import LogisticRegression
 from huggingface_hub import HfApi
 from llm_safety_evaluator.moderation import ToxicityModel,choose_threshold
+from llm_safety_evaluator.lexical import RatioWeightedLogistic
+from llm_safety_evaluator.uncertainty import paired_bootstrap,strata
 from llm_safety_evaluator.evaluation import (metrics,calibrate,calibrated_predict,
     policy_threshold,ranking_curves,paired_correctness)
 
@@ -31,7 +33,7 @@ def read_split(split,n,seed,revision,seen):
     y=np.array([int(r["toxicity"]>=.5) for r in rows])
     if len(set(y))!=2: raise ValueError("Both labels required")
     digest=hashlib.sha256(json.dumps([(r["text"],r["toxicity"]) for r in rows],ensure_ascii=False).encode()).hexdigest()
-    return [r["text"] for r in rows],y,{"count":n,"positive_count":int(y.sum()),"sha256":digest,"duplicates_skipped":duplicates}
+    return [r["text"] for r in rows],y,{"count":n,"positive_count":int(y.sum()),"sha256":digest,"duplicates_skipped":duplicates},np.array([r["toxicity"] for r in rows])
 
 def main():
     p=argparse.ArgumentParser()
@@ -44,27 +46,33 @@ def main():
     if not 500<=a.limit<=10000 or not 1000<=a.train_limit<=100000: p.error("Invalid split size")
     revision=HfApi().dataset_info(DATASET,revision=a.dataset_revision).sha
     seen=set()
-    train,train_y,train_info=read_split("train",a.train_limit,42,revision,seen)
-    val,vy,val_info=read_split("validation",a.limit,42,revision,seen)
-    test,ty,test_info=read_split("test",a.limit,42,revision,seen)
+    train,train_y,train_info,_=read_split("train",a.train_limit,42,revision,seen)
+    val,vy,val_info,_=read_split("validation",a.limit,42,revision,seen)
+    test,ty,test_info,test_annotation=read_split("test",a.limit,42,revision,seen)
     cal,policy=train_test_split(np.arange(len(vy)),test_size=.5,random_state=42,stratify=vy)
     # All vocabulary and supervised lexical weights are fitted on official training only.
     vectorizer=FeatureUnion([("word",TfidfVectorizer(ngram_range=(1,2),min_df=2,max_features=60000,sublinear_tf=True,dtype=np.float32)),
         ("character",TfidfVectorizer(analyzer="char",ngram_range=(3,5),min_df=3,max_features=80000,sublinear_tf=True,dtype=np.float32))])
     x=vectorizer.fit_transform(train)
     lexical=LogisticRegression(C=4.,max_iter=500,random_state=42).fit(x,train_y)
-    lv=lexical.predict_proba(vectorizer.transform(val))[:,1];lt=lexical.predict_proba(vectorizer.transform(test))[:,1]
+    xv=vectorizer.transform(val);xt=vectorizer.transform(test)
+    lv=lexical.predict_proba(xv)[:,1];lt=lexical.predict_proba(xt)[:,1]
+    ratio=RatioWeightedLogistic().fit(x,train_y)
+    rv=ratio.predict_proba(xv)[:,1];rt=ratio.predict_proba(xt)[:,1]
     import torch
     torch.set_num_threads(min(4,os.cpu_count() or 1))
     bert=ToxicityModel(model_id=MODEL,revision=a.model_revision)
     bv=np.asarray(bert.predict(val));bt=np.asarray(bert.predict(test))
     cb=calibrate(vy[cal],[bv[cal]])
     stack=calibrate(vy[cal],[bv[cal],lv[cal]])
+    stack_all=calibrate(vy[cal],[bv[cal],lv[cal],rv[cal]])
     candidates={
         "toxic_bert":(bv,bt),
         "lexical":(lv,lt),
         "calibrated_bert":(calibrated_predict(cb,[bv]),calibrated_predict(cb,[bt])),
-        "hybrid":(calibrated_predict(stack,[bv,lv]),calibrated_predict(stack,[bt,lt]))}
+        "hybrid":(calibrated_predict(stack,[bv,lv]),calibrated_predict(stack,[bt,lt])),
+        "ratio_lexical":(rv,rt),
+        "hybrid_all":(calibrated_predict(stack_all,[bv,lv,rv]),calibrated_predict(stack_all,[bt,lt,rt]))}
     prevalence=float(train_y.mean())
     models={}
     for key,(v,t) in candidates.items():
@@ -78,7 +86,9 @@ def main():
     selected=max(models,key=lambda k:(models[k]["validation_f1"]["f1"] or 0,k))
     ref=models["toxic_bert"]["tuned"];cand=models[selected]["tuned"]
     paired=paired_correctness(ty,bt,ref["threshold"],candidates[selected][1],cand["threshold"])
-    report={"schema_version":2,"dataset":DATASET,"dataset_revision":revision,"model":MODEL,"model_revision":bert.revision or a.model_revision,
+    intervals=paired_bootstrap(ty,bt,ref["threshold"],candidates[selected][1],cand["threshold"])
+    slices={k:strata(ty,t,models[k]["tuned"]["threshold"],[len(s.split()) for s in test],test_annotation) for k,(_,t) in candidates.items()}
+    report={"schema_version":3,"uncertainty":intervals,"error_slices":slices,"dataset":DATASET,"dataset_revision":revision,"model":MODEL,"model_revision":bert.revision or a.model_revision,
         "seed":42,"label_rule":"toxicity >= 0.5","sampling":"bounded-buffer shuffle (10000), normalized-text duplicate removal in train/validation/test order",
         "splits":{"train":train_info,"validation":val_info,"test":test_info,"calibration":{"count":len(cal),"positive_count":int(vy[cal].sum())},"policy":{"count":len(policy),"positive_count":int(vy[policy].sum())}},
         "test_count":len(ty),"test_positive_count":int(ty.sum()),"validation_count":len(vy),

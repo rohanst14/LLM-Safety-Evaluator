@@ -13,6 +13,8 @@
 - Lexical baseline: word 1–2 grams and character 3–5 grams, TF-IDF, L2-regularized logistic regression (C=4), fit on training only.
 - Calibrated BERT: logistic recalibration of BERT log-odds.
 - Hybrid: regularized logistic stacking of BERT and lexical log-odds; no test labels are used for fitting.
+- Ratio-weighted lexical: smoothed class-conditional document-frequency log ratios multiply TF-IDF features, followed by L2 logistic regression. This is NB-inspired feature weighting, not NB-SVM.
+- Three-score hybrid: logistic stacking of transformer, lexical and ratio-weighted lexical log-odds, fitted on calibration only.
 
 ## 3. Validation and operating points
 - Stratify validation into equal calibration and policy partitions; fit recalibration and stacking only on the calibration partition.
@@ -28,13 +30,19 @@
 - Record reliability bins, ROC and precision–recall curves, paired correctness counts and validation policy metrics. Undefined ratios are null rather than fabricated.
 - Curves may be downsampled for display; scalar ranking metrics use all observations.
 
-## 5. Limitations
+## 5. Uncertainty and error analysis
+- Use 1,000 paired, class-stratified bootstrap replicates (seed 1729) on fixed held-out predictions and thresholds. Report percentile 95% intervals for F1, recall, balanced accuracy, average precision, ROC-AUC and Brier score, including paired differences versus tuned Toxic-BERT.
+- Intervals condition on the fitted models and sample prevalence; they do not incorporate training variability, topic clustering, annotation noise or multiple-comparison adjustment. Treat them as descriptive uncertainty, not proof of statistical superiority.
+- Examine short, medium and long comments and annotation scores near the binary decision boundary. Suppress recall or FPR if the corresponding class has fewer than 20 observations. These slices are not demographic fairness metrics.
+- Reference: [Wang and Manning (2012), Baselines and Bigrams](https://aclanthology.org/P12-2018/) for NB-inspired weighting; the implementation uses TF-IDF and logistic regression rather than their NB-SVM.
+
+## 6. Limitations
 - Human toxicity ratings are contextual and imperfect; this is text moderation, not comprehensive LLM safety or jailbreak resistance.
 - Pretrained model training overlap has not been ruled out. The dataset and model cards describe distinct Jigsaw tasks but shared domains; do not claim independent external validation.
 - No demographic fairness or subgroup assurance is claimed. The standard Civil Comments split and sampled evaluation do not establish subgroup performance.
 - Dataset may contain offensive text. No raw examples are rendered in the public dashboard.
 
-## 6. Reproducibility
+## 7. Reproducibility
 - Run `python experiments/evaluate_moderation.py --limit 2000 --train-limit 30000` after dependency installation.
 - For exact reruns, pass the dataset and model revisions recorded in the measured JSON.
 - Validate the output with `python tests/check_report.py results/moderation.json`.
