@@ -1,0 +1,29 @@
+name: Repository and dashboard audit
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'README.md'
+      - 'ROADMAP.md'
+      - 'tests/audit_reports.py'
+      - 'tests/audit_pages.cjs'
+      - '.github/workflows/audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python tests/audit_reports.py
+      - run: python -m compileall -q src experiments tests examples
+      - run: for f in docs/*.js; do node --check "$f"; done
+      - run: npm install --no-save --no-package-lock playwright
+      - run: npx playwright install --with-deps chromium
+      - run: node tests/dashboard_smoke.cjs
+      - run: node tests/audit_pages.cjs

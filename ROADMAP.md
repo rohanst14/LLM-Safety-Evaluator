@@ -1,13 +1,14 @@
-# Development roadmap
+# Research roadmap
 
 ## Implemented
-- Local pretrained toxicity inference and supervised lexical classifier.
-- Validation-only calibration, stacking and threshold selection.
-- Classification, ranking and probability diagnostics; report validation and browser tests.
+- Comparative Civil Comments benchmark: 13 classifier configurations and a majority reference.
+- Independent calibration, validation-selected operating policies, paired bootstrap analysis and error slices.
+- Real-model XSTest evaluation and controlled confidentiality, instruction-boundary and abstention probes.
+- CPU end-to-end BERT-Mini fine-tuning with three-loss ablation and a distinct confirmation sample.
+- Reproducible report checks and dashboard publication.
 
-## Future work
-- Independently sourced evaluation data and pretrained training-overlap analysis.
-- Identity-annotated subgroup evaluation and uncertainty quantification.
-- Separate real-model instruction-boundary evaluation.
-
-- CPU end-to-end fine-tuning and loss ablation implemented; measured confirmation results pending.
+## Further validation
+- Complete fine-tuning and analyze measured confirmation results.
+- Evaluate training variability across seeds and independently sourced datasets.
+- Extend response assessment with human-reviewed semantic judgments and longer generation budgets.
+- Evaluate identity-annotated moderation subgroups.

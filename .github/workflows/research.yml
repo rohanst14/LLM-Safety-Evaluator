@@ -9,10 +9,12 @@ on:
       - 'src/llm_safety_evaluator/encoder.py'
       - 'experiments/render_report.py'
       - 'src/llm_safety_evaluator/uncertainty.py'
-      - 'tests/**'
-      - 'docs/dashboard.js'
+      - 'tests/test_moderation.py'
+      - 'tests/test_encoder.py'
+      - 'tests/test_evaluation.py'
+      - 'tests/test_robustness.py'
+      - 'tests/check_report.py'
       - 'requirements-research.txt'
-      - '.github/workflows/research.yml'
   pull_request:
   workflow_dispatch:
 concurrency:

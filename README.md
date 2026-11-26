@@ -28,7 +28,7 @@ Civil Comments: 30,000 training comments, 2,000 validation comments and 2,000 he
 | Average precision | 56.72% | 75.17% | 76.36% |
 | Calibration error (lower is better) | 2.80% | 3.31% | 1.64% |
 
-The validation-selected multiview ensemble achieves 95.20% accuracy and 76.36% average precision. The RoBERTa comparator achieves 80.52% toxicity recall and 68.89% positive-class F1. Full model comparisons, checkpoint provenance, operating-point analysis and paired uncertainty intervals are provided in the [experimental report](docs/experimental-report.md) and [measured JSON](docs/results/moderation.json).
+The validation-selected multiview ensemble achieves 95.20% accuracy and 76.36% average precision, leading the 13 classifiers on both metrics. The RoBERTa comparator achieves the highest observed positive-class F1 (68.89%), while calibrated RoBERTa leads on recall (81.17%) at the F1-selected operating points. Full model comparisons, checkpoint provenance, operating-point analysis and paired uncertainty intervals are provided in the [experimental report](docs/experimental-report.md) and [measured JSON](docs/results/moderation.json).
 
 ## Methodology
 
@@ -37,7 +37,7 @@ The validation-selected multiview ensemble achieves 95.20% accuracy and 76.36% a
 - Regularized probability stacking with independent calibration and validation-selected decision thresholds.
 - Shared held-out evaluation, class-sensitive metrics, calibration diagnostics and paired bootstrap analysis.
 
-[Moderation protocol](docs/research-protocol.md) · [Completed benchmark workflow](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/runs/45758913740)
+[Integrated methodology](docs/methodology.md) · [Moderation protocol](docs/research-protocol.md) · [Completed benchmark workflow](https://github.com/rohanst14/LLM-Safety-Evaluator/actions/runs/45758913740)
 
 ## Response-level evaluation
 
@@ -47,7 +47,7 @@ Local Qwen2.5-0.5B-Instruct generation on all 450 XSTest prompts and 96 controll
 
 ## Transformer fine-tuning
 
-Full BERT-Mini encoder adaptation on CPU with a controlled BCE, weighted BCE and focal-loss ablation. Checkpoint selection uses internal development average precision; calibration and policy selection use separate validation subsets. Matched reference classifiers and a previously unreported confirmation sample support comparative analysis.
+The CPU fine-tuning experiment implements full BERT-Mini encoder adaptation with a controlled BCE, weighted BCE and focal-loss ablation. Checkpoint selection uses internal development average precision; calibration and policy selection use separate validation subsets. Matched reference classifiers and a previously unreported confirmation sample support comparative analysis. Measured results are published separately after the experiment completes.
 
 [Fine-tuning protocol](docs/fine-tuning-protocol.md) · [Fine-tuning dashboard](https://rohanst14.github.io/LLM-Safety-Evaluator/fine-tuning.html)
 
